@@ -16,7 +16,7 @@ public:
         return edges[a];
     }
 
-    int size () const { return edges.size(); }
+    unsigned int size () const { return edges.size(); }
     bool empty () const { return edges.empty(); }
 private:
     std::map<int, std::set<int> > edges;
