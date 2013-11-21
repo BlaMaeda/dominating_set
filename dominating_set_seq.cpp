@@ -20,8 +20,8 @@ bool all (const vector<bool>& v1, const vector<bool>& v2) {
     return true;
 }
 
-void backtrack(Graph& graph, const vector<vector<bool> >& coverable, const vector<int>& vertices,
-            int idx, int no_erased, int &min_erased, vector<bool>& erased, int n) {
+void backtrack(Graph& graph, const vector<vector<bool> >& coverable, 
+               const vector<int>& vertices, int idx, int no_erased, int &min_erased, vector<bool>& erased, int n) {
     if (all(erased)) {
         if (no_erased < min_erased) {
             min_erased = no_erased;
@@ -61,11 +61,12 @@ bool comp (const pair<int,int>& p1, const pair<int,int>& p2) {
 // It's assumed that `graph' is connected
 int dominating_set(Graph& graph) {
     int n = graph.size();
+    set<int> nodes = graph.get_nodes();
 
     vector<pair<int, int> > aux(n);
-    for (int i = 0; i < n; i++) {
-        aux[i].first = graph.neighbors(i).size();
-        aux[i].second = i;
+    for (set<int>::iterator s_it = nodes.begin(); s_it != nodes.end(); s_it++) {
+        aux[i].first = graph.neighbors(*s_it).size();
+        aux[i].second = *s_it;
     }
     sort(aux.begin(), aux.end(), comp);
 
@@ -96,13 +97,35 @@ int dominating_set(Graph& graph) {
 
 // Separate `graph' in its connected components
 // and return them as a vector of graphs
-vector<Graph> connected_components(const Graph& graph) {
+vector<Graph> connected_components(Graph graph) {
+    int n = graph.size();
     vector<Graph> cc;
 
-    // TODO
-    // Por ahora lo voy a probar con grafos conectados noma
+    //cc.push_back(graph); return cc; //XXX
 
-    cc.push_back(graph);
+    set<int> not_seen = graph.get_nodes();
+
+    while (!not_seen.empty()) {
+        int v;
+        set<int> g_nodes;
+        set<int> added_nodes;
+        added_nodes.insert(*(not_seen.begin()));
+        while (!added_nodes.empty()) {
+            v = *(added_nodes.begin());
+            g_nodes.insert(v);
+            not_seen.erase(v);
+            added_nodes.erase(v);
+            
+            const set<int>& neigh = graph.neighbors(v);
+            for (set<int>::iterator s_it = neigh.begin(); s_it != neigh.end(); s_it++) {
+                if (not_seen.find(*s_it) != not_seen.end()) {
+                    added_nodes.insert(*s_it);
+                }
+            }
+        }
+
+        cc.push_back(graph.sub_graph(g_nodes));
+    }
 
     return cc;
 }
@@ -113,27 +136,26 @@ int main () {
     cin >> no_cases;
 
     for (int i_case = 1; i_case <= no_cases; i_case++) {
-        Graph graph;
-
+        int no_nodes, no_edges;
         cin >> no_nodes >> no_edges;
 
-        // Every node is ``adjacent'' to itself
-        for (int n = 0; n < no_nodes; n++) {
-            graph.add_edge(n, n);
-        }
+        Graph graph(no_nodes);
 
         int n1, n2;
         for (int e = 0; e < no_edges; e++) {
             cin >> n1 >> n2;
-            graph.add_edge(n1, n2);
+            if (n1 != n2) graph.add_edge(n1, n2);
         }
+
+        graph.print();
 
         // Separate in connected components
         vector<Graph> cc = connected_components(graph);
 
         int dom_set_size = 0;
         for (unsigned int i = 0; i < cc.size(); i++) {
-            dom_set_size += dominating_set(cc[i]);
+            //dom_set_size += dominating_set(cc[i]);
+            cc[i].print();
         }
 
         cout << dom_set_size << endl;
