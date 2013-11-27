@@ -99,8 +99,34 @@ int dominating_set(Graph& graph) {
 vector<Graph> connected_components(Graph graph) {
     int n = graph.size();
     vector<Graph> cc;
+    
+    // Tengo todos los nodos en un set s
+    // Mientras s no este vacio, tomo el primer nodo y lo pongo en un set t
+    // Mientras t no este vacio, tomo el primer nodo, lo elimino de s y de t, y agrego en t todos los vecinos que
+    // esten en s
 
-    cc.push_back(graph); return cc; //XXX
+    set<int> s = graph.get_nodes();
+    while (!s.empty()) {
+        Graph g;
+        set<int> t;
+
+        t.insert(*(s.begin()));
+        while (!t.empty()) {
+            int v = *(t.begin());
+            s.erase(v);
+            t.erase(v);
+
+            g.add_edge(v, v);
+            const set<int>& v_neigh = graph.neighbors(v);
+            for (set<int>::iterator s_it = v_neigh.begin(); s_it != v_neigh.end(); s_it++) {
+                if (s.find(*s_it) == s.end()) continue;
+                t.insert(*s_it);
+                g.add_edge(v, *s_it);
+            }
+        }
+        g.normalize();
+        cc.push_back(g);
+    }
 
     return cc;
 }

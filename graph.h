@@ -32,7 +32,7 @@ public:
     void remove_edge (int a, int b) {
         std::set<int>::iterator s_it;
 
-        s_it = edges[a].find(b);
+        s_it = edges[a].find(b); //TODO optimizable
         if (s_it != edges[a].end()) {
             edges[a].erase(s_it);
         }
