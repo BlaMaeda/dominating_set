@@ -1,7 +1,7 @@
 #include <iostream>
 #include <vector>
 #include <algorithm>
-#include "graph.h"
+#include "graph_seq.h"
 using namespace std;
 
 bool all (const vector<bool>& v) {
