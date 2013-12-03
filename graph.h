@@ -1,5 +1,5 @@
-#ifndef DOM_SET_GRAPH_PAR_H
-#define DOM_SET_GRAPH_PAR_H
+#ifndef DOM_SET_GRAPH_H
+#define DOM_SET_GRAPH_H
 #include <iostream>
 #include <map>
 #include <set>
@@ -29,33 +29,11 @@ public:
 
     std::set<int> get_nodes () { return nodes; }
 
-    void remove_edge (int a, int b) {
-        std::set<int>::iterator s_it;
-
-        s_it = edges[a].find(b); //TODO optimizable
-        if (s_it != edges[a].end()) {
-            edges[a].erase(s_it);
-        }
-
-        s_it = edges[b].find(a);
-        if (s_it != edges[b].end()) {
-            edges[b].erase(s_it);
-        }
-    }
-
-    void remove_node (int a) {
-        std::map<int, std::set<int> >::iterator m_it;
-
-        m_it = edges.find(a);
-        if (m_it != edges.end()) {
-            edges.erase(m_it);
-        }
-    }
-
     const std::set<int>& neighbors (int a) {
         return edges[a];
     }
 
+    /// Make nodes go from 0 to N-1
     void normalize () {
         std::map<int, int> ver2nor;
         std::map<int, std::set<int> >::iterator m_it;

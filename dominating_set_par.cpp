@@ -1,11 +1,14 @@
 #include <iostream>
 #include <vector>
 #include <algorithm>
-#include "graph_par.h"
-#include <omp.h>
 #include <cassert>
+#include <cstring>
+#include <stdexcept>
+#include <omp.h>
+#include "graph.h"
 using namespace std;
 
+/// Check if all components of v are true
 bool all (const vector<bool>& v) {
     int n = v.size();
     for (int i = 0; i < n; i++) {
@@ -15,6 +18,7 @@ bool all (const vector<bool>& v) {
     return true;
 }
 
+/// Check if v1[i] || v2[i] is true for all i
 bool all (const vector<bool>& v1, const vector<bool>& v2) {
     int n = v1.size();
     for (int i = 0; i < n; i++) {
@@ -24,40 +28,30 @@ bool all (const vector<bool>& v1, const vector<bool>& v2) {
     return true;
 }
 
-//Parallel alternatives
-//
-//bool all (const vector<bool>& v) {
-//    bool flag = true;
-//    int n = v.size();
-//    int i = 0;
-//    #pragma omp parallel shared(flag)
-//    while (flag && i < n) {
-//        if (!v[i]) flag = false;
-//        i++;
-//    }
-//    return flag;
-//}
-//
-//bool all (const vector<bool>& v1, const vector<bool>& v2) {
-//    bool flag = true;
-//    int n = v1.size();
-//    int i = 0;
-//    #pragma omp parallel shared(flag)
-//    while (flag && i < n) {
-//        if (!v1[i] && !v2[i]) flag = false;
-//        i++;
-//    }
-//    return flag;
-//}
+int str2num (const char* s) {
+    int n = strlen(s);
+    int num = 0;
+    int ten = 1;
+    for (int i = n-1; i >= 0; i--) {
+        int digit = static_cast<int>(s[i] - '0');
+        if (digit < 0 || digit > 9) {
+            return -1;
+        }
+        num += digit*ten;
+        ten *= 10;
+    }
+    return num;
+}
 
-int active;
+int active, MAX_ACTIVE;
 
+/// Parallelized backtrack function
 void backtrack(Graph& graph, const vector<vector<bool> >& coverable, 
                const vector<int>& vertices, int idx, int no_erased, int &min_erased, vector<bool>& erased, int n) {
 
     if (all(erased)) {
         if (no_erased < min_erased) {
-            #pragma omp critical
+            #pragma omp critical (min_erased)
             min_erased = no_erased;
         }
         return;
@@ -82,8 +76,11 @@ void backtrack(Graph& graph, const vector<vector<bool> >& coverable,
         new_erased[*s_it] = true;
     }
 
-    if ((active < 4) && (n-idx >= 25)) {
-        #pragma omp critical
+    // Make the recursive calls in separate threads if the
+    // number of active threads is small and if there
+    // isn't too many remaining nodes
+    if ((active < MAX_ACTIVE) && (n-idx >= 20)) {
+        #pragma omp critical (active)
         active++;
         #pragma omp parallel shared(min_erased,active)
         {
@@ -97,7 +94,7 @@ void backtrack(Graph& graph, const vector<vector<bool> >& coverable,
                           idx+1, no_erased, min_erased, erased, n);
             }
         }
-        #pragma omp critical
+        #pragma omp critical (active)
         active--;
     }
     else {
@@ -112,12 +109,14 @@ bool comp (const pair<int,int>& p1, const pair<int,int>& p2) {
     return p1.first > p2.first;
 }
 
-// Compute the size of the dominating set
-// for `graph'.
-// It's assumed that `graph' is connected
+/** Compute the size of the dominating set
+    for `graph'.
+    It's assumed that `graph' is connected
+*/
 int dominating_set(Graph& graph) {
     int n = graph.size();
 
+    // Sort vertices by number of neighbors
     vector<pair<int, int> > aux(n);
     for (int i = 0; i < n; i++) {
         aux[i].first = graph.neighbors(i).size();
@@ -130,6 +129,8 @@ int dominating_set(Graph& graph) {
         vertices[i] = aux[i].second;
     }
 
+    // coverable[i] has a vector<bool> indicating which nodes will
+    // be covered by marking the nodes from vertices[i] to vertices[n-1]
     vector<vector<bool> > coverable(n, vector<bool>(n, false));
     const set<int>& neigh = graph.neighbors(vertices[n-1]);
     for (set<int>::iterator s_it = neigh.begin(); s_it != neigh.end(); s_it++) {
@@ -150,16 +151,13 @@ int dominating_set(Graph& graph) {
     return min_erased;
 }
 
-// Separate `graph' in its connected components
-// and return them as a vector of graphs
+/**
+   Separate `graph' in its connected components
+   and return them as a vector of graphs
+*/
 vector<Graph> connected_components(Graph graph) {
     int n = graph.size();
     vector<Graph> cc;
-    
-    // Tengo todos los nodos en un set s
-    // Mientras s no este vacio, tomo el primer nodo y lo pongo en un set t
-    // Mientras t no este vacio, tomo el primer nodo, lo elimino de s y de t, y agrego en t todos los vecinos que
-    // esten en s
 
     set<int> s = graph.get_nodes();
     while (!s.empty()) {
@@ -187,7 +185,7 @@ vector<Graph> connected_components(Graph graph) {
     return cc;
 }
 
-int main () {
+int main (int argc, char** argv) {
     int no_nodes, no_edges;
     active = 1;
     
@@ -214,11 +212,22 @@ int main () {
         // Separate in connected components
         vector<Graph> cc = connected_components(graph);
 
+        // Nested parallelization
         omp_set_nested(1);
+        if (argc > 1) {
+            MAX_ACTIVE = str2num(argv[1]);
+            if (MAX_ACTIVE == -1) {
+                cout << "Max number of threads is not an integer." << endl;
+                return 1;
+            }
+        }
+        else {
+            MAX_ACTIVE = 4;
+        }
+
         int dom_set_size = 0;
         for (unsigned int i = 0; i < cc.size(); i++) {
             if (active != 1) {
-                cout << "AAAAAAAAAAAAAAAAAAA " << active << endl;
                 assert(false);
             }
             dom_set_size += dominating_set(cc[i]);

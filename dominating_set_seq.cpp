@@ -1,9 +1,10 @@
 #include <iostream>
 #include <vector>
 #include <algorithm>
-#include "graph_seq.h"
+#include "graph.h"
 using namespace std;
 
+/// Check if all components of v are true
 bool all (const vector<bool>& v) {
     int n = v.size();
     for (int i = 0; i < n; i++) {
@@ -13,6 +14,7 @@ bool all (const vector<bool>& v) {
     return true;
 }
 
+/// Check if v1[i] || v2[i] is true for all i
 bool all (const vector<bool>& v1, const vector<bool>& v2) {
     int n = v1.size();
     for (int i = 0; i < n; i++) {
@@ -22,6 +24,7 @@ bool all (const vector<bool>& v1, const vector<bool>& v2) {
     return true;
 }
 
+/// Sequential backtrack function
 void backtrack(Graph& graph, const vector<vector<bool> >& coverable, 
                const vector<int>& vertices, int idx, int no_erased, int &min_erased, vector<bool>& erased, int n) {
     if (all(erased)) {
@@ -58,12 +61,14 @@ bool comp (const pair<int,int>& p1, const pair<int,int>& p2) {
     return p1.first > p2.first;
 }
 
-// Compute the size of the dominating set
-// for `graph'.
-// It's assumed that `graph' is connected
+/** Compute the size of the dominating set
+    for `graph'.
+    It's assumed that `graph' is connected
+*/
 int dominating_set(Graph& graph) {
     int n = graph.size();
 
+    // Sort vertices by number of neighbors
     vector<pair<int, int> > aux(n);
     for (int i = 0; i < n; i++) {
         aux[i].first = graph.neighbors(i).size();
@@ -76,6 +81,8 @@ int dominating_set(Graph& graph) {
         vertices[i] = aux[i].second;
     }
 
+    // coverable[i] has a vector<bool> indicating which nodes will
+    // be covered by marking the nodes from vertices[i] to vertices[n-1]
     vector<vector<bool> > coverable(n, vector<bool>(n, false));
     const set<int>& neigh = graph.neighbors(vertices[n-1]);
     for (set<int>::iterator s_it = neigh.begin(); s_it != neigh.end(); s_it++) {
@@ -96,16 +103,13 @@ int dominating_set(Graph& graph) {
     return min_erased;
 }
 
-// Separate `graph' in its connected components
-// and return them as a vector of graphs
+/**
+   Separate `graph' in its connected components
+   and return them as a vector of graphs
+*/
 vector<Graph> connected_components(Graph graph) {
     int n = graph.size();
     vector<Graph> cc;
-    
-    // Tengo todos los nodos en un set s
-    // Mientras s no este vacio, tomo el primer nodo y lo pongo en un set t
-    // Mientras t no este vacio, tomo el primer nodo, lo elimino de s y de t, y agrego en t todos los vecinos que
-    // esten en s
 
     set<int> s = graph.get_nodes();
     while (!s.empty()) {
