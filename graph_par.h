@@ -1,5 +1,5 @@
-#ifndef DOM_SET_GRAPH_SEQ_H
-#define DOM_SET_GRAPH_SEQ_H
+#ifndef DOM_SET_GRAPH_PAR_H
+#define DOM_SET_GRAPH_PAR_H
 #include <iostream>
 #include <map>
 #include <set>

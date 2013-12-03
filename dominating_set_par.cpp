@@ -1,7 +1,9 @@
 #include <iostream>
 #include <vector>
 #include <algorithm>
-#include "graph_seq.h"
+#include "graph_par.h"
+#include <omp.h>
+#include <cassert>
 using namespace std;
 
 bool all (const vector<bool>& v) {
@@ -22,15 +24,47 @@ bool all (const vector<bool>& v1, const vector<bool>& v2) {
     return true;
 }
 
+//Parallel alternatives
+//
+//bool all (const vector<bool>& v) {
+//    bool flag = true;
+//    int n = v.size();
+//    int i = 0;
+//    #pragma omp parallel shared(flag)
+//    while (flag && i < n) {
+//        if (!v[i]) flag = false;
+//        i++;
+//    }
+//    return flag;
+//}
+//
+//bool all (const vector<bool>& v1, const vector<bool>& v2) {
+//    bool flag = true;
+//    int n = v1.size();
+//    int i = 0;
+//    #pragma omp parallel shared(flag)
+//    while (flag && i < n) {
+//        if (!v1[i] && !v2[i]) flag = false;
+//        i++;
+//    }
+//    return flag;
+//}
+
+int active;
+
 void backtrack(Graph& graph, const vector<vector<bool> >& coverable, 
                const vector<int>& vertices, int idx, int no_erased, int &min_erased, vector<bool>& erased, int n) {
+
     if (all(erased)) {
         if (no_erased < min_erased) {
+            #pragma omp critical
             min_erased = no_erased;
         }
         return;
     }
-    if (idx == n) return;
+    if (idx == n) {
+        return;
+    }
     
     if (no_erased + 1 >= min_erased) {
         return;
@@ -48,10 +82,30 @@ void backtrack(Graph& graph, const vector<vector<bool> >& coverable,
         new_erased[*s_it] = true;
     }
 
-    backtrack(graph, coverable, vertices, 
-              idx+1, no_erased+1, min_erased, new_erased, n);
-    backtrack(graph, coverable, vertices, 
-              idx+1, no_erased, min_erased, erased, n);
+    if ((active < 4) && (n-idx >= 25)) {
+        #pragma omp critical
+        active++;
+        #pragma omp parallel shared(min_erased,active)
+        {
+            #pragma omp sections
+            {
+                #pragma omp section
+                backtrack(graph, coverable, vertices, 
+                          idx+1, no_erased+1, min_erased, new_erased, n);
+                #pragma omp section
+                backtrack(graph, coverable, vertices, 
+                          idx+1, no_erased, min_erased, erased, n);
+            }
+        }
+        #pragma omp critical
+        active--;
+    }
+    else {
+        backtrack(graph, coverable, vertices, 
+                  idx+1, no_erased+1, min_erased, new_erased, n);
+        backtrack(graph, coverable, vertices, 
+                  idx+1, no_erased, min_erased, erased, n);
+    }
 }
 
 bool comp (const pair<int,int>& p1, const pair<int,int>& p2) {
@@ -135,6 +189,7 @@ vector<Graph> connected_components(Graph graph) {
 
 int main () {
     int no_nodes, no_edges;
+    active = 1;
     
     while (cin >> no_nodes >> no_edges && no_nodes != 0) {
         Graph graph;
@@ -159,8 +214,13 @@ int main () {
         // Separate in connected components
         vector<Graph> cc = connected_components(graph);
 
+        omp_set_nested(1);
         int dom_set_size = 0;
         for (unsigned int i = 0; i < cc.size(); i++) {
+            if (active != 1) {
+                cout << "AAAAAAAAAAAAAAAAAAA " << active << endl;
+                assert(false);
+            }
             dom_set_size += dominating_set(cc[i]);
         }
 
