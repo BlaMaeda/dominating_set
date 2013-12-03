@@ -16,8 +16,9 @@ _The dominating set problem concerns testing whether γ(G) ≤ K for a given gra
 NP-complete decision problem in computational complexity theory (Garey & Johnson 1979). 
 Therefore it is believed that there is no efficient algorithm that finds a smallest dominating set for a given graph."_
 
-
+In this project, the dominating set problem is solved using exhaustive search with backtracking.
 
 Input
 =====
 
+The input format is the same used in [this problem](http://uva.onlinejudge.org/external/101/10160.html "Servicing stations"). 
